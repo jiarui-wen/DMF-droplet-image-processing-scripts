@@ -11,13 +11,6 @@ folder_path = r"C:\Users\wjrwe\OneDrive - University of Toronto\NTU2025\image pr
 output_folder = os.path.join(folder_path, "output_images")
 os.makedirs(output_folder, exist_ok=True)
 
-# # 設定新的原點位置
-# origin_x = 140 # 新的原點 X 座標 (像素)
-# origin_y = 535  # 新的原點 Y 座標 (像素) 
-
-# origin_x = 720 # 新的原點 X 座標 (像素)
-# origin_y = 670  # 新的原點 Y 座標 (像素) 
-
 origin_x = 180 # 新的原點 X 座標 (像素)
 origin_y = 490  # 新的原點 Y 座標 (像素) 
 pixel_per_mm = 630  # 每毫米多少像素
@@ -30,11 +23,10 @@ image_files = [f for f in os.listdir(folder_path) if f.endswith(".tif")]
 image_files.sort()
 
 t = 0
-# change = False
-change = True
-for filename in image_files[2902:]:
-    # if filename == "1 Hz 0-N001_00002902.tif":
-    #     change = True
+change = False
+for filename in image_files:
+    if filename == "1 Hz 0-N001_00002902.tif":
+        change = True
 
     image_path = os.path.join(folder_path, filename)
     image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
@@ -43,8 +35,7 @@ for filename in image_files[2902:]:
         print(f"❌ 無法讀取圖片: {filename}")
         continue
 
-    # 裁切區域：Y:148~694, X:634~914
-    # cropped_image = image[148:694, 634:914]
+    # 裁切區域：Y:180:690, X:540:900
     cropped_image = image[180:690, 540:900]
     
     # 取得裁切後圖片的中心點
@@ -56,45 +47,27 @@ for filename in image_files[2902:]:
 
     # 使用旋轉矩陣來旋轉圖片
     rotated_image = cv2.warpAffine(cropped_image, rotation_matrix, (w, h))
-    # rotated_image = cv2.warpAffine(image, rotation_matrix, (w, h))
-    if change:
-        blurred_image = cv2.GaussianBlur(rotated_image, (7, 7), 15)
 
-        _, binary_image = cv2.threshold(
-            blurred_image,
-            0,                        # threshold value is ignored
-            255,                      # max value to use
-            cv2.THRESH_BINARY + cv2.THRESH_OTSU
-        )
+    blurred_image = cv2.GaussianBlur(rotated_image, (7, 7), 15)
 
+    sobel_x = cv2.Sobel(blurred_image, cv2.CV_64F, 1, 0, ksize=3)
+    sobel_y = cv2.Sobel(blurred_image, cv2.CV_64F, 0, 1, ksize=3)
+    sobel_edges = cv2.magnitude(sobel_x, sobel_y)
+    sobel_edges = np.uint8(np.absolute(sobel_edges))
 
-        kernel = np.ones((5,5), np.uint8)
-        # binary_image = cv2.morphologyEx(binary_image, cv2.MORPH_OPEN, kernel)
-        binary_image = cv2.morphologyEx(binary_image, cv2.MORPH_CLOSE, kernel)
-        contours, _ = cv2.findContours(binary_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    _, binary_image = cv2.threshold(sobel_edges, 15, 255, cv2.THRESH_BINARY)
 
-    else:
-        blurred_image = cv2.GaussianBlur(rotated_image, (7, 7), 15)
-
-        sobel_x = cv2.Sobel(blurred_image, cv2.CV_64F, 1, 0, ksize=3)
-        sobel_y = cv2.Sobel(blurred_image, cv2.CV_64F, 0, 1, ksize=3)
-        sobel_edges = cv2.magnitude(sobel_x, sobel_y)
-        sobel_edges = np.uint8(np.absolute(sobel_edges))
-
-        _, binary_image = cv2.threshold(sobel_edges, 15, 255, cv2.THRESH_BINARY)
-
-        # binary_image = cv2.Canny(blurred_image, threshold1=50, threshold2=150)
-
-        kernel = np.ones((5,5), np.uint8)
+    kernel = np.ones((5,5), np.uint8)
+    if not change:
         binary_image = cv2.morphologyEx(binary_image, cv2.MORPH_OPEN, kernel)
-        binary_image = cv2.morphologyEx(binary_image, cv2.MORPH_CLOSE, kernel)
-        contours, _ = cv2.findContours(binary_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    binary_image = cv2.morphologyEx(binary_image, cv2.MORPH_CLOSE, kernel)
+    contours, _ = cv2.findContours(binary_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
     valid_contours = []
     for cnt in contours:
         if len(cnt) >= 5:
             (_, _), (major_axis, minor_axis), _ = cv2.fitEllipse(cnt)
-            if major_axis >= 50 and minor_axis >= 50 and major_axis <= 200 and minor_axis <=200:
+            if major_axis >= 50 and minor_axis >= 50:
                 valid_contours.append(cnt)
 
     if valid_contours:
@@ -118,21 +91,7 @@ for filename in image_files[2902:]:
             new_relative_X_mm = new_relative_X / pixel_per_mm
             new_relative_Y_mm = new_relative_Y / pixel_per_mm
 
-            # 儲存到列表
-            centroid_list.append([filename, t, new_relative_X_mm, new_relative_Y_mm])
-
-            # # find leading and trailing points
-            # (ellipse_x, ellipse_y), (MA, ma), angle_deg = cv2.fitEllipse(largest_contour)
-            # angle_rad = np.deg2rad(angle_deg)
-            # major_axis_vector = np.array([np.cos(angle_rad), np.sin(angle_rad)])
-            # pts = largest_contour[:,0,:]
-            # projections = (pts - centroid) @ major_axis_vector
-            # leading_idx = np.argmax(projections)
-            # trailing_idx = np.argmin(projections)
-            # leading_point = pts[leading_idx]
-            # trailing_point = pts[trailing_idx]
-
-
+            
 
             # Suppose you already have:
             pts = largest_contour[:,0,:]  # shape (N,2)
@@ -156,9 +115,6 @@ for filename in image_files[2902:]:
 
             # Stack back into an array of points
             dense_pts = np.vstack([x_uniform, y_uniform]).T
-
-
-            
 
             # 畫圖與儲存
             
@@ -189,8 +145,8 @@ for filename in image_files[2902:]:
                 highest_point_int = tuple(np.round(highest_point).astype(int))
                 lowest_point_int = tuple(np.round(lowest_point).astype(int))
 
-                cv2.circle(image_with_contour, highest_point_int, 5, (0,255,0), -1)
-                cv2.circle(image_with_contour, lowest_point_int, 5, (0,0,255), -1)
+                cv2.circle(image_with_contour, highest_point_int, 5, (255,0,255), -1)
+                cv2.circle(image_with_contour, lowest_point_int, 5, (255,255,0), -1)
 
 
             # # draw ellipse, major axis, leading and trailing points
@@ -207,6 +163,31 @@ for filename in image_files[2902:]:
 
             output_path = os.path.join(output_folder, f"processed_{filename}")
             cv2.imwrite(output_path, image_with_contour)
+
+            # Compute relative positions
+            rel_top_x = highest_point[0] - origin_x
+            rel_top_y = highest_point[1] - origin_y
+            rel_bottom_x = lowest_point[0] - origin_x
+            rel_bottom_y = lowest_point[1] - origin_y
+
+            # Convert to mm
+            rel_top_x_mm = rel_top_x / pixel_per_mm
+            rel_top_y_mm = rel_top_y / pixel_per_mm
+            rel_bottom_x_mm = rel_bottom_x / pixel_per_mm
+            rel_bottom_y_mm = rel_bottom_y / pixel_per_mm
+
+            # Append all data to list
+            centroid_list.append([
+                filename,
+                t,
+                new_relative_X_mm,
+                new_relative_Y_mm,
+                rel_top_x_mm,
+                rel_top_y_mm,
+                rel_bottom_x_mm,
+                rel_bottom_y_mm
+            ])
+
         else:
             print(f"⚠️ 面積為零: {filename}")
     else:
@@ -216,7 +197,19 @@ for filename in image_files[2902:]:
 
 
 # 輸出 Excel
-df = pd.DataFrame(centroid_list, columns=["Filename", "Time", "X_mm", "Y_mm"])
+df = pd.DataFrame(
+    centroid_list,
+    columns=[
+        "Filename",
+        "Time",
+        "Centroid_X_mm",
+        "Centroid_Y_mm",
+        "Top_X_mm",
+        "Top_Y_mm",
+        "Bottom_X_mm",
+        "Bottom_Y_mm"
+    ]
+)
 excel_output = os.path.join(folder_path, "centroid_coordinates.xlsx")
 df.to_excel(excel_output, index=False)
 print(f"✅ 已輸出質心結果至 Excel：{excel_output}")
