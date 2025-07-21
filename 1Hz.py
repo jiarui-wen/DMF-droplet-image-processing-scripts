@@ -7,8 +7,8 @@ from scipy import interpolate
 
 
 # ====== 使用者參數設定 ======
-folder_path = r"C:\Users\wjrwe\OneDrive - University of Toronto\NTU2025\image processing practice\1 Hz 0-N001"
-output_folder = os.path.join(folder_path, "output_images")
+folder_path = r"C:\Users\wjrwe\Documents\NTU2025ImageProcessing\image processing practice\1 Hz 0-N001"
+output_folder = os.path.join(folder_path, "output")
 os.makedirs(output_folder, exist_ok=True)
 
 origin_x = 180 # 新的原點 X 座標 (像素)
@@ -73,8 +73,6 @@ for filename in image_files:
     if valid_contours:
         largest_contour = max(valid_contours, key=cv2.contourArea)
         M = cv2.moments(largest_contour)
-        image_with_contour = cv2.cvtColor(rotated_image, cv2.COLOR_GRAY2BGR)
-
 
         if M["m00"] != 0:
             cX = int(M["m10"] / M["m00"])
@@ -84,13 +82,10 @@ for filename in image_files:
             relative_cY = cY - origin_y
 
             # 座標軸轉換
-            # new_relative_X = -relative_cY
-            # new_relative_Y = -relative_cX
-            new_relative_X = relative_cX
-            new_relative_Y = relative_cY
+            new_relative_X = -relative_cY
+            new_relative_Y = relative_cX
             new_relative_X_mm = new_relative_X / pixel_per_mm
             new_relative_Y_mm = new_relative_Y / pixel_per_mm
-
             
 
             # Suppose you already have:
@@ -116,11 +111,6 @@ for filename in image_files:
             # Stack back into an array of points
             dense_pts = np.vstack([x_uniform, y_uniform]).T
 
-            # 畫圖與儲存
-            
-            cv2.drawContours(image_with_contour, [largest_contour], -1, (0, 255, 0), 2)
-            cv2.circle(image_with_contour, (cX, cY), 5, (0, 0, 255), -1)
-            cv2.circle(image_with_contour, (origin_x, origin_y), 5, (255, 0, 0), -1)
 
             # # Example: draw sampled points
             # for p in dense_pts.astype(int):
@@ -145,36 +135,23 @@ for filename in image_files:
                 highest_point_int = tuple(np.round(highest_point).astype(int))
                 lowest_point_int = tuple(np.round(lowest_point).astype(int))
 
-                cv2.circle(image_with_contour, highest_point_int, 5, (255,0,255), -1)
-                cv2.circle(image_with_contour, lowest_point_int, 5, (255,255,0), -1)
-
-
-            # # draw ellipse, major axis, leading and trailing points
-            # cv2.ellipse(image_with_contour, ((ellipse_x, ellipse_y), (MA, ma), angle_deg), (0, 255, 255), 1)
-            # dx = (MA / 2) * np.cos(angle_rad)
-            # dy = (MA / 2) * np.sin(angle_rad)
-            # pt1 = (int(ellipse_x - dx), int(ellipse_y - dy))
-            # pt2 = (int(ellipse_x + dx), int(ellipse_y + dy))
-            # cv2.line(image_with_contour, pt1, pt2, (255, 0, 0), 2)
-
-            # cv2.circle(image_with_contour, tuple(leading_point), 5, (0,255,255), -1)
-            # cv2.circle(image_with_contour, tuple(trailing_point), 5, (0,255,255), -1)
-
-
-            output_path = os.path.join(output_folder, f"processed_{filename}")
-            cv2.imwrite(output_path, image_with_contour)
-
             # Compute relative positions
             rel_top_x = highest_point[0] - origin_x
             rel_top_y = highest_point[1] - origin_y
             rel_bottom_x = lowest_point[0] - origin_x
             rel_bottom_y = lowest_point[1] - origin_y
+            
+            new_rel_top_x = -rel_top_y
+            new_rel_top_y = rel_top_x
+
+            new_rel_bottom_x = -rel_bottom_y
+            new_rel_bottom_y = rel_bottom_x
 
             # Convert to mm
-            rel_top_x_mm = rel_top_x / pixel_per_mm
-            rel_top_y_mm = rel_top_y / pixel_per_mm
-            rel_bottom_x_mm = rel_bottom_x / pixel_per_mm
-            rel_bottom_y_mm = rel_bottom_y / pixel_per_mm
+            new_rel_top_x_mm = new_rel_top_x / pixel_per_mm
+            new_rel_top_y_mm = new_rel_top_y / pixel_per_mm
+            new_rel_bottom_x_mm = new_rel_bottom_x / pixel_per_mm
+            new_rel_bottom_y_mm = new_rel_bottom_y / pixel_per_mm
 
             # Append all data to list
             centroid_list.append([
@@ -182,11 +159,21 @@ for filename in image_files:
                 t,
                 new_relative_X_mm,
                 new_relative_Y_mm,
-                rel_top_x_mm,
-                rel_top_y_mm,
-                rel_bottom_x_mm,
-                rel_bottom_y_mm
+                new_rel_top_x_mm,
+                new_rel_top_y_mm,
+                new_rel_bottom_x_mm,
+                new_rel_bottom_y_mm
             ])
+
+            image_with_contour = cv2.cvtColor(rotated_image, cv2.COLOR_GRAY2BGR)
+            cv2.drawContours(image_with_contour, [largest_contour], -1, (0, 255, 0), 2)
+            cv2.circle(image_with_contour, (cX, cY), 5, (0, 0, 255), -1)
+            cv2.circle(image_with_contour, (origin_x, origin_y), 5, (255, 0, 0), -1)
+            cv2.circle(image_with_contour, highest_point_int, 5, (255,0,255), -1)
+            cv2.circle(image_with_contour, lowest_point_int, 5, (255,255,0), -1)
+
+            output_path = os.path.join(output_folder, f"processed_{filename}")
+            cv2.imwrite(output_path, image_with_contour)
 
         else:
             print(f"⚠️ 面積為零: {filename}")
@@ -204,12 +191,12 @@ df = pd.DataFrame(
         "Time",
         "Centroid_X_mm",
         "Centroid_Y_mm",
-        "Top_X_mm",
-        "Top_Y_mm",
-        "Bottom_X_mm",
-        "Bottom_Y_mm"
+        "Leading_X_mm",
+        "Leading_Y_mm",
+        "Trailing_X_mm",
+        "Trailing_Y_mm"
     ]
 )
-excel_output = os.path.join(folder_path, "centroid_coordinates.xlsx")
+excel_output = os.path.join(output_folder, "centroid_coordinates.xlsx")
 df.to_excel(excel_output, index=False)
 print(f"✅ 已輸出質心結果至 Excel：{excel_output}")

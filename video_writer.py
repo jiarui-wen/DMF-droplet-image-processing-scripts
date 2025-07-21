@@ -3,9 +3,9 @@ import glob
 import os
 
 # === USER PARAMETERS ===
-folder_path = r"C:\Users\wjrwe\OneDrive - University of Toronto\NTU2025\image processing practice\output_images_1hz"
-output_video = r"C:\Users\wjrwe\OneDrive - University of Toronto\NTU2025\image processing practice\1hzContoured.mp4"
-fps = 200                              # Playback frames per second
+folder_path = r"C:\Users\wjrwe\Documents\NTU2025ImageProcessing\image processing practice\1 kHz 0\output"
+output_video = r"C:\Users\wjrwe\Documents\NTU2025ImageProcessing\image processing practice\output_1khz_7_17slow.mp4"
+fps = 1000                            # Playback frames per second
 scale_factor = 1.0                     # Resize factor, 1.0 = original size
 
 # === Find and sort all TIFF images ===
