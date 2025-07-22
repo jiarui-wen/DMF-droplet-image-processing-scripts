@@ -17,9 +17,9 @@ def find_largest_contour(cnts, filename):
     else:
         print(f"❌ No valid contours: {filename}")
         return None
-    
 
-img_path = r"C:\Users\wjrwe\Documents\NTU2025ImageProcessing\image processing practice\1 kHz 0 volume graph\1 kHz 0_00000865.tif"
+# only problematic frame: 1 kHz 0_00000865.tif
+img_path = r"C:\Users\wjrwe\Documents\NTU2025ImageProcessing\image processing practice\1 kHz 0 new\1 kHz 0_00001879.tif"
 img = cv.imread(img_path, cv.IMREAD_GRAYSCALE)
 
 origin_x = 10 # 新的原點 X 座標 (像素)
@@ -32,6 +32,9 @@ cropped_image = img[170:620, 250:1000]
 cv.imshow("cropped", cropped_image)
 cv.waitKey(0)
 cv.destroyAllWindows()
+
+electrode = np.zeros_like(cropped_image)
+cv.rectangle(electrode, (384,74), (692, 382), 255, -1)
 
 # 模糊：用bilateral而不用gaussian，这样可以避免液滴边缘被模糊
 # blurred_image = cv.GaussianBlur(cropped_image, (7,7), 20)
@@ -54,8 +57,8 @@ cv.imshow("binary img", binary_image)
 cv.waitKey(0)
 cv.destroyAllWindows()
 
-# 找封闭曲线：如果一个封闭曲线套了小的封闭曲线，只保留最外层的（cv.RETR_EXTERNAL）。保留曲线上的所有点（cv.CHAIN_APPROX_NONE）
-contours, _ = cv.findContours(binary_image, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE)
+# 找封闭曲线：如果一个封闭曲线套了小的封闭曲线，只保留最外层的（cv.RETR_EXTERNAL）
+contours, _ = cv.findContours(binary_image, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
 contoured_img = copy.deepcopy(cropped_image)
 cv.drawContours(contoured_img, contours, -1, (255,0,0), 1)
 
@@ -79,7 +82,7 @@ kernel_size = 3
 while cv.contourArea(largest_contour) < 123000:
     kernel = np.ones((kernel_size, kernel_size), np.uint8)
     largest_contour_mask = cv.morphologyEx(largest_contour_mask, cv.MORPH_CLOSE, kernel)
-    contours, _ = cv.findContours(largest_contour_mask, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE)
+    contours, _ = cv.findContours(largest_contour_mask, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
     largest_contour = find_largest_contour(contours, img_path[-8:])
     cv.imshow("largest contour mask" + str(t), largest_contour_mask)
     cv.waitKey(0)
@@ -91,6 +94,26 @@ while cv.contourArea(largest_contour) < 123000:
 image_with_contour = cv.cvtColor(cropped_image, cv.COLOR_GRAY2BGR)
 cv.drawContours(image_with_contour, [largest_contour], -1, (0, 255, 0), 1)
 cv.imshow("largest contour" + str(t), image_with_contour)
+cv.waitKey(0)
+cv.destroyAllWindows()
+
+filled_droplet = np.zeros_like(cropped_image)
+cv.drawContours(filled_droplet, [largest_contour], -1, 255, thickness=cv.FILLED)
+cv.imshow("filled droplet", filled_droplet)
+cv.waitKey(0)
+cv.destroyAllWindows()
+
+kernel = np.ones((9, 9), np.uint8)
+filled_droplet = cv.morphologyEx(filled_droplet, cv.MORPH_OPEN, kernel)
+cv.imshow("less fuzzy droplet", filled_droplet)
+cv.waitKey(0)
+cv.destroyAllWindows()
+
+contours, _ = cv.findContours(filled_droplet, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
+largest_contour = find_largest_contour(contours, img_path[-8:])
+image_with_contour = cv.cvtColor(cropped_image, cv.COLOR_GRAY2BGR)
+cv.drawContours(image_with_contour, [largest_contour], -1, (0, 255, 0), 1)
+cv.imshow("largest contour less fuzzy", image_with_contour)
 cv.waitKey(0)
 cv.destroyAllWindows()
 
