@@ -2,7 +2,24 @@ import cv2 as cv
 import numpy as np
 import copy
 
-img_path = r"C:\Users\wjrwe\Documents\NTU2025ImageProcessing\image processing practice\1 kHz 0 volume graph\1 kHz 0_00001879.tif"
+
+def find_largest_contour(cnts, filename):
+    '''找面积最大的封闭曲线，也就是液滴轮廓'''
+    valid_contours = []
+    for cnt in cnts:
+        if len(cnt) >= 5:
+            (_, _), (major_axis, minor_axis), _ = cv.fitEllipse(cnt)
+            if major_axis >= 50 and minor_axis >= 50:
+                valid_contours.append(cnt)
+
+    if valid_contours:
+        return max(valid_contours, key=cv.contourArea)
+    else:
+        print(f"❌ No valid contours: {filename}")
+        return None
+    
+
+img_path = r"C:\Users\wjrwe\Documents\NTU2025ImageProcessing\image processing practice\1 kHz 0 volume graph\1 kHz 0_00000865.tif"
 img = cv.imread(img_path, cv.IMREAD_GRAYSCALE)
 
 origin_x = 10 # 新的原點 X 座標 (像素)
@@ -40,43 +57,56 @@ cv.destroyAllWindows()
 # 找封闭曲线：如果一个封闭曲线套了小的封闭曲线，只保留最外层的（cv.RETR_EXTERNAL）。保留曲线上的所有点（cv.CHAIN_APPROX_NONE）
 contours, _ = cv.findContours(binary_image, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE)
 contoured_img = copy.deepcopy(cropped_image)
-cv.drawContours(contoured_img, contours, -1, (255,0,0), 3)
+cv.drawContours(contoured_img, contours, -1, (255,0,0), 1)
 
 cv.imshow("contoured img", contoured_img)
 cv.waitKey(0)
 cv.destroyAllWindows()
 
 # 找面积最大的封闭曲线，也就是液滴轮廓
-valid_contours = []
-for cnt in contours:
-    if len(cnt) >= 5:
-        (_, _), (major_axis, minor_axis), _ = cv.fitEllipse(cnt)
-        if major_axis >= 50 and minor_axis >= 50:
-            valid_contours.append(cnt)
-if valid_contours:
-        largest_contour = max(valid_contours, key=cv.contourArea)
+largest_contour = find_largest_contour(contours, img_path[-8:])
 
 # 画最大封闭曲线的mask
 largest_contour_mask = np.zeros_like(cropped_image)
 cv.drawContours(largest_contour_mask, [largest_contour], -1, (255, 255, 255), 1)
 
-cv.imshow("largest contour mask", largest_contour_mask)
+cv.imshow("largest contour mask 0", largest_contour_mask)
 cv.waitKey(0)
 cv.destroyAllWindows()
 
-# 对最大封闭曲线的mask进行morph close，连接断裂的部分
-kernel = np.ones((5, 5), np.uint8)
-closed_img = cv.morphologyEx(largest_contour_mask, cv.MORPH_CLOSE, kernel)
+t = 0
+kernel_size = 3
+while cv.contourArea(largest_contour) < 123000:
+    kernel = np.ones((kernel_size, kernel_size), np.uint8)
+    largest_contour_mask = cv.morphologyEx(largest_contour_mask, cv.MORPH_CLOSE, kernel)
+    contours, _ = cv.findContours(largest_contour_mask, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE)
+    largest_contour = find_largest_contour(contours, img_path[-8:])
+    cv.imshow("largest contour mask" + str(t), largest_contour_mask)
+    cv.waitKey(0)
+    cv.destroyAllWindows()
+    t += 1
+    kernel_size += 2
+    print(cv.contourArea(largest_contour))
 
-cv.imshow("closed", closed_img)
+image_with_contour = cv.cvtColor(cropped_image, cv.COLOR_GRAY2BGR)
+cv.drawContours(image_with_contour, [largest_contour], -1, (0, 255, 0), 1)
+cv.imshow("largest contour" + str(t), image_with_contour)
 cv.waitKey(0)
 cv.destroyAllWindows()
+
+# # 对最大封闭曲线的mask进行morph close，连接断裂的部分
+# kernel = np.ones((5, 5), np.uint8)
+# closed_img = cv.morphologyEx(largest_contour_mask, cv.MORPH_CLOSE, kernel)
+
+# cv.imshow("closed", closed_img)
+# cv.waitKey(0)
+# cv.destroyAllWindows()
 
 # 找morph close之后mask的轮廓，取最大面积的轮廓
 # 按理说不用再从valid_contours找largest_contour，因为刚找的contours里面只有一个contour
 # 但是考虑到一次morph close不一定能完全封闭，找largest_contour还是有必要的，以此来计算面积
 # todo: 以面积作为条件进行while loop (while cv.contourArea(largest_contour) < 100000:)
-contours, _ = cv.findContours(closed_img, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE)
+# contours, _ = cv.findContours(closed_img, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE)
 # valid_contours = []
 # for cnt in contours:
 #     if len(cnt) >= 5:
@@ -85,12 +115,14 @@ contours, _ = cv.findContours(closed_img, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE
 #             valid_contours.append(cnt)
 # if valid_contours:
 #         largest_contour = max(valid_contours, key=cv.contourArea)
-largest_contour_mask = np.zeros_like(cropped_image)
-cv.drawContours(largest_contour_mask, [contours[0]], -1, (255, 255, 255), 1)  
+# largest_contour_mask = np.zeros_like(cropped_image)
+# cv.drawContours(largest_contour_mask, [contours[0]], -1, (255, 255, 255), 1)  
 
-cv.imshow("largest", largest_contour_mask)
-cv.waitKey(0)
-cv.destroyAllWindows()
+# cv.imshow("largest", largest_contour_mask)
+# cv.waitKey(0)
+# cv.destroyAllWindows()
+
+print(cv.contourArea(largest_contour))
 
 
 
