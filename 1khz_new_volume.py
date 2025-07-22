@@ -5,8 +5,9 @@ import pandas as pd
 from scipy import interpolate
 
 
-def find_largest_contour(cnts, filename):
-    '''找面积最大的封闭曲线，也就是液滴轮廓'''
+def find_largest_contour_from_binary(binary_img, filename):
+    '''先找封闭曲线，如果一个封闭曲线套了小的封闭曲线，只保留最外层的（cv.RETR_EXTERNAL）；然后找面积最大的封闭曲线，也就是液滴轮廓'''
+    cnts, _ = cv2.findContours(binary_img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     valid_contours = []
     for cnt in cnts:
         if len(cnt) >= 5:
@@ -23,7 +24,7 @@ def find_largest_contour(cnts, filename):
 
 # ====== 使用者參數設定 ======
 folder_path = r"C:\Users\wjrwe\Documents\NTU2025ImageProcessing\image processing practice\1 kHz 0 new"
-output_folder = os.path.join(folder_path, "output 1kHz new")
+output_folder = os.path.join(folder_path, "output 1kHz new volume")
 os.makedirs(output_folder, exist_ok=True)
 
 # # 設定新的原點位置 
@@ -72,11 +73,8 @@ for index, filename in enumerate(image_files):
     # 挑选主要边缘，生成黑白图像
     _, binary_image = cv2.threshold(sobel_edges, 5, 255, cv2.THRESH_BINARY)
 
-    # 找封闭曲线：如果一个封闭曲线套了小的封闭曲线，只保留最外层的（cv.RETR_EXTERNAL）
-    contours, _ = cv2.findContours(binary_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
     # 找面积最大的封闭曲线，也就是液滴轮廓
-    largest_contour = find_largest_contour(contours, filename)
+    largest_contour = find_largest_contour_from_binary(binary_image, filename)
     if largest_contour is None:
         continue
 
@@ -88,8 +86,7 @@ for index, filename in enumerate(image_files):
     while cv2.contourArea(largest_contour) < 123000:
         kernel = np.ones((kernel_size, kernel_size), np.uint8)
         largest_contour_mask = cv2.morphologyEx(largest_contour_mask, cv2.MORPH_CLOSE, kernel)
-        contours, _ = cv2.findContours(largest_contour_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        largest_contour = find_largest_contour(contours, filename)
+        largest_contour = find_largest_contour_from_binary(largest_contour_mask, filename)
         if largest_contour is None:
             break
         kernel_size += 2
@@ -101,8 +98,17 @@ for index, filename in enumerate(image_files):
     cv2.drawContours(filled_droplet, [largest_contour], -1, 255, thickness=cv2.FILLED)
     kernel = np.ones((9, 9), np.uint8)
     filled_droplet = cv2.morphologyEx(filled_droplet, cv2.MORPH_OPEN, kernel)
-    contours, _ = cv2.findContours(filled_droplet, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    largest_contour = find_largest_contour(contours, filename)
+    largest_contour = find_largest_contour_from_binary(filled_droplet, filename)
+
+    # electrode = np.zeros_like(cropped_image)
+    # cv2.rectangle(electrode, (384,74), (692, 382), 255, -1)
+    # overlap = cv2.bitwise_and(filled_droplet, electrode)
+    subtract_mask = np.zeros_like(cropped_image)
+    subtract_mask = 255 - subtract_mask
+    cv2.rectangle(subtract_mask, (0,0), (384, 450), 0, -1)
+    overlap = cv2.bitwise_and(filled_droplet, subtract_mask)
+
+    overlap_px = cv2.countNonZero(overlap)
 
     M = cv2.moments(largest_contour)
     if M["m00"] != 0:
@@ -196,7 +202,8 @@ for index, filename in enumerate(image_files):
             new_rel_leading_x_mm,
             new_rel_leading_y_mm,
             new_rel_trailing_x_mm,
-            new_rel_trailing_y_mm
+            new_rel_trailing_y_mm,
+            overlap_px
         ])
 
         # 畫圖與儲存
@@ -223,9 +230,10 @@ df = pd.DataFrame(
         "Leading_X_mm",
         "Leading_Y_mm",
         "Trailing_X_mm",
-        "Trailing_Y_mm"
+        "Trailing_Y_mm",
+        "Overlap_px"
     ]
 )
-excel_output = os.path.join(output_folder, "data_1khz_new.xlsx")
+excel_output = os.path.join(output_folder, "data_1khz_new_volume.xlsx")
 df.to_excel(excel_output, index=False)
 print(f"✅ 已輸出質心結果至 Excel：{excel_output}")

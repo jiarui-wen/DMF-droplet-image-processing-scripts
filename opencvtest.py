@@ -33,9 +33,6 @@ cv.imshow("cropped", cropped_image)
 cv.waitKey(0)
 cv.destroyAllWindows()
 
-electrode = np.zeros_like(cropped_image)
-cv.rectangle(electrode, (384,74), (692, 382), 255, -1)
-
 # 模糊：用bilateral而不用gaussian，这样可以避免液滴边缘被模糊
 # blurred_image = cv.GaussianBlur(cropped_image, (7,7), 20)
 blurred_image = cv.bilateralFilter(cropped_image, d=9, sigmaColor=75, sigmaSpace=15)
@@ -117,6 +114,30 @@ cv.imshow("largest contour less fuzzy", image_with_contour)
 cv.waitKey(0)
 cv.destroyAllWindows()
 
+# electrode = np.zeros_like(cropped_image)
+# cv.rectangle(electrode, (384,74), (692, 382), 255, -1)
+# overlap = cv.bitwise_and(filled_droplet, electrode)
+subtract_mask = np.zeros_like(cropped_image)
+subtract_mask = 255 - subtract_mask
+cv.rectangle(subtract_mask, (0,0), (384, 450), 0, -1)
+overlap = cv.bitwise_and(filled_droplet, subtract_mask)
+cv.imshow("overlap", overlap)
+cv.waitKey(0)
+cv.destroyAllWindows()
+
+overlap_cnts, _ = cv.findContours(overlap, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
+overlap_cnt = find_largest_contour(overlap_cnts, img_path[-8:])
+image_with_overlap_cnt = cv.cvtColor(cropped_image, cv.COLOR_GRAY2BGR)
+cv.drawContours(image_with_overlap_cnt, [overlap_cnt], -1, (0, 255, 0), 1)
+cv.imshow("overlap contour", image_with_overlap_cnt)
+cv.waitKey(0)
+cv.destroyAllWindows()
+
+
+
+print("contour size:", cv.contourArea(largest_contour))
+print("filled droplet size:", cv.countNonZero(filled_droplet))
+print("overlap size:", cv.countNonZero(overlap))
 # # 对最大封闭曲线的mask进行morph close，连接断裂的部分
 # kernel = np.ones((5, 5), np.uint8)
 # closed_img = cv.morphologyEx(largest_contour_mask, cv.MORPH_CLOSE, kernel)
@@ -145,7 +166,6 @@ cv.destroyAllWindows()
 # cv.waitKey(0)
 # cv.destroyAllWindows()
 
-print(cv.contourArea(largest_contour))
 
 
 
