@@ -80,7 +80,7 @@ for index, filename in enumerate(image_files):
 
     # 画最大封闭曲线的mask
     largest_contour_mask = np.zeros_like(cropped_image)
-    cv2.drawContours(largest_contour_mask, [largest_contour], -1, (255, 255, 255), 1)
+    cv2.drawContours(largest_contour_mask, [largest_contour], -1, (255, 255, 255), thickness=cv2.FILLED)
     
     kernel_size = 3
     while cv2.contourArea(largest_contour) < 123000:
