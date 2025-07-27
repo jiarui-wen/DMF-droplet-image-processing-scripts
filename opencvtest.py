@@ -66,6 +66,41 @@ cv.imwrite(os.path.join(save_dir, '03_sobel_edges.png'), sobel_edges_visual)
 cv.waitKey(0)
 cv.destroyAllWindows()
 
+# canny = cv.Canny(blurred_image, 5, 9, L2gradient=True)
+# cv.imshow("canny", canny)
+# cv.waitKey(0)
+# cv.destroyAllWindows()
+
+
+# canny_mask = cv.morphologyEx(canny, cv.MORPH_CLOSE, np.ones((3, 3), np.uint8))
+# cv.imshow("canny mask morph close", canny_mask)
+# cv.waitKey(0)
+# cv.destroyAllWindows()
+
+
+# cnts, _ = cv.findContours(canny_mask, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
+# largest_contour = max(cnts, key=cv.contourArea)
+# canny_largest_contour = np.zeros_like(cropped_image)
+# cv.drawContours(canny_largest_contour, [largest_contour], -1, (255, 255, 255), thickness=cv.FILLED)
+# cv.imshow("largest contour canny", canny_largest_contour)
+# cv.waitKey(0)
+# cv.destroyAllWindows()
+
+# t = 1
+# kernel_size = 3
+# while cv.contourArea(largest_contour) < 120000:
+#     kernel = np.ones((kernel_size, kernel_size), np.uint8)
+#     canny_mask = cv.morphologyEx(canny_mask, cv.MORPH_CLOSE, kernel)
+#     contours, _ = cv.findContours(canny_mask, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
+#     largest_contour = max(contours, key=cv.contourArea)
+#     cv.drawContours(canny_mask, [largest_contour], -1, (255, 255, 255), thickness=cv.FILLED)
+#     cv.imshow("largest canny mask filled" + str(t), canny_mask)
+#     cv.waitKey(0)
+#     cv.destroyAllWindows()
+#     t += 1
+#     kernel_size += 2
+#     print(cv.contourArea(largest_contour))
+
 # 挑选主要边缘，生成黑白图像
 _, binary_image = cv.threshold(sobel_edges, 5, 255, cv.THRESH_BINARY)
 

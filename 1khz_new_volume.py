@@ -30,7 +30,8 @@ os.makedirs(output_folder, exist_ok=True)
 # # 設定新的原點位置 
 origin_x = 10 # 新的原點 X 座標 (像素)
 origin_y = 230  # 新的原點 Y 座標 (像素) 
-pixel_per_mm = 630  # 每毫米多少像素
+pixel_per_mm = 308/2  # 每毫米多少像素
+droplet_height_mm = 0.06
 
 # 儲存質心結果
 data_list = []
@@ -109,6 +110,9 @@ for index, filename in enumerate(image_files):
     overlap = cv2.bitwise_and(filled_droplet, subtract_mask)
 
     overlap_px = cv2.countNonZero(overlap)
+    overlap_mm2 = overlap_px / (pixel_per_mm ** 2)
+    droplet_volume_mm3 = overlap_mm2 * droplet_height_mm
+    droplet_volume_nL = droplet_volume_mm3 * 1000
 
     M = cv2.moments(largest_contour)
     if M["m00"] != 0:
@@ -203,7 +207,7 @@ for index, filename in enumerate(image_files):
             new_rel_leading_y_mm,
             new_rel_trailing_x_mm,
             new_rel_trailing_y_mm,
-            overlap_px
+            droplet_volume_nL
         ])
 
         # 畫圖與儲存
@@ -216,7 +220,7 @@ for index, filename in enumerate(image_files):
 
         output_path = os.path.join(output_folder, f"processed_{filename}")
         cv2.imwrite(output_path, image_with_contour)
-        print(index)
+        print(index, droplet_volume_nL)
 
 
 # 輸出 Excel
@@ -231,7 +235,7 @@ df = pd.DataFrame(
         "Leading_Y_mm",
         "Trailing_X_mm",
         "Trailing_Y_mm",
-        "Overlap_px"
+        "Volume_nL"
     ]
 )
 excel_output = os.path.join(output_folder, "data_1khz_new_volume.xlsx")
