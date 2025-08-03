@@ -386,7 +386,7 @@ cv.destroyAllWindows()
 
 
 # 找封闭曲线：如果一个封闭曲线套了小的封闭曲线，只保留最外层的（cv.RETR_EXTERNAL）
-contours, _ = cv.findContours(binary_image, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
+contours, hierarchy = cv.findContours(binary_image, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
 # contoured_img = copy.deepcopy(cropped_image)
 contoured_img = np.zeros_like(cropped_image)
 cv.drawContours(contoured_img, contours, -1, (255,0,0), 1)
@@ -395,6 +395,39 @@ cv.imshow("contoured img", contoured_img)
 cv.imwrite(os.path.join(save_dir, '05_contoured.png'), contoured_img)
 cv.waitKey(0)
 cv.destroyAllWindows()
+
+# 找内部轮廓
+if hierarchy is not None:
+    inner_contours = []
+    for i, (cnt, h) in enumerate(zip(contours, hierarchy[0])):
+        # h[2] is the first child index, h[3] is the parent index
+        # If parent exists (h[3] >= 0), this is an inner contour
+        if h[3] >= 0:  # This contour has a parent, so it's inner
+            inner_contours.append(cnt)
+    
+    # 显示内部轮廓
+    inner_contour_img = np.zeros_like(cropped_image)
+    cv.drawContours(inner_contour_img, inner_contours, -1, (255, 255, 255), 1)
+    cv.imshow("inner contours", inner_contour_img)
+    cv.imwrite(os.path.join(save_dir, '05a_inner_contours.png'), inner_contour_img)
+    cv.waitKey(0)
+    cv.destroyAllWindows()
+    
+    # 找最大的内部轮廓
+    if inner_contours:
+        largest_inner_contour = max(inner_contours, key=cv.contourArea)
+        inner_contour_mask = np.zeros_like(cropped_image)
+        cv.drawContours(inner_contour_mask, [largest_inner_contour], -1, 255, 1)
+        cv.imshow("largest inner contour", inner_contour_mask)
+        cv.imwrite(os.path.join(save_dir, '05b_largest_inner_contour.png'), inner_contour_mask)
+        cv.waitKey(0)
+        cv.destroyAllWindows()
+        print(f"Largest inner contour area: {cv.contourArea(largest_inner_contour)}")
+    else:
+        print("No inner contours found")
+        largest_inner_contour = None
+else:
+    largest_inner_contour = None
 
 # 找面积最大的封闭曲线，也就是液滴轮廓
 largest_contour = find_largest_contour(contours, img_path[-8:])
