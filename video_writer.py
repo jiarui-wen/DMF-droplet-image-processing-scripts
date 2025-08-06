@@ -3,15 +3,18 @@ import glob
 import os
 
 # === USER PARAMETERS ===
-folder_path = r"C:\Users\wjrwe\Documents\NTU2025ImageProcessing\image processing practice\splitting1kHz7.30\output splitting1kHz7.30"
-output_video = r"C:\Users\wjrwe\Documents\NTU2025ImageProcessing\image processing practice\output splitting1kHz7.30.mp4"
-fps = 200                          # Playback frames per second
+folder_path = r"C:\Users\wjrwe\Documents\NTU2025ImageProcessing\image processing practice\moving4.29\set2\1 kHz2 0\output 1 kHz2 0"
+output_video = r"C:\Users\wjrwe\Documents\NTU2025ImageProcessing\image processing practice\videos\moving2 1 kHz2 0 slow.mp4"
+fps = 200                        # Playback frames per second
 scale_factor = 1.0                     # Resize factor, 1.0 = original size
+
+# Create output directory if it doesn't exist
+os.makedirs(os.path.dirname(output_video), exist_ok=True)
 
 # === Find and sort all TIFF images ===
 # image_files = sorted(glob.glob(os.path.join(folder_path, "*.tif")))
 
-image_files = [f for f in os.listdir(folder_path) if f.endswith(".jpg")]
+image_files = [f for f in os.listdir(folder_path) if f.endswith(".tif")]
 image_files.sort()
 
 if not image_files:

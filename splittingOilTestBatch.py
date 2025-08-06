@@ -91,7 +91,6 @@ for index, filename in enumerate(image_files[2302:]): # electrodes are activated
     mask = np.zeros_like(cropped_image)
     largest_contour, second_largest_contour = find_2_largest_contours_from_binary(binary_image, filename)
     if largest_contour is None:
-        print(f"❌ No valid contours 999: {filename}")
         continue
     if cv2.contourArea(largest_contour) > 60000:
         cv2.drawContours(mask, [largest_contour], -1, (255, 255, 255), thickness=cv2.FILLED)
